@@ -47,13 +47,13 @@ class SSHConfig:
                         print(f"Found subsystem command '{m[2]}' for '{m[1]}'")
                     elif re.match('^Match', line) is not None:
                         match_content, seek = self.parse_match(line, content)
-                        if match_content is not None and 'entries' in match_content.keys():
+                        if match_content is not {} and 'Entries' in match_content.keys():
                             print(f"Found 'Match' block, type '{match_content['type']}', affecting '{match_content['targets']}'")
-                            for entry in match_content['entries']:
+                            for entry in match_content['Entries']:
                                 print(f"\tFound value '{m[2]}' for '{m[1]}'")
                             self.config['Matches'].append(match_content)
                         else:
-                            print(f"Found empty 'Match' block, type '{match_content['type']}', affecting '{match_content['targets']}'")
+                            print(f"Found unparseable 'Match' block : {line}")
                         # Go up one line since the last "readline()" in parse_match goes 1 too far
                         content.seek(seek)
                     elif re.match('^[A-Z]', line) is not None:
@@ -95,6 +95,6 @@ class SSHConfig:
         return seek, match_content
 
 sshd_config = SSHConfig()
-sshd_config.parse()
+sshd_config.parse('./sshd_config')
 # Pretty print the resulting dict
 print(f"Resulting dict : {json.dumps(sshd_config.config, indent=1)}")
