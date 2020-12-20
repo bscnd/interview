@@ -5,10 +5,11 @@ import sys
 
 
 class SSHConfig:
-    '''
+    """
     Stores SSH_config as a dict while differentiating between default
     values, actual options, Subsystem definition and Match blocks
-    '''
+    """
+
     def __init__(self):
         self.config = {
             "Defaults": {},
@@ -17,10 +18,10 @@ class SSHConfig:
             "Matches": []
         }
 
-    def parse(self, path='/etc/ssh/sshd_config'):
-        '''
+    def parse(self, path='sshd_config'):
+        """
         Parses sshd_config and stores it in self.config.
-        '''
+        """
 
         try:
             with open(path, 'r') as content:
@@ -48,7 +49,8 @@ class SSHConfig:
                     elif re.match('^Match', line) is not None:
                         match_content, seek = self.parse_match(line, content)
                         if match_content is not {} and 'Entries' in match_content.keys():
-                            print(f"Found 'Match' block, type '{match_content['type']}', affecting '{match_content['targets']}'")
+                            print(
+                                f"Found 'Match' block, type '{match_content['Type']}', affecting '{match_content['Targets']}'")
                             for entry in match_content['Entries']:
                                 print(f"\tFound value '{m[2]}' for '{m[1]}'")
                             self.config['Matches'].append(match_content)
@@ -59,7 +61,7 @@ class SSHConfig:
                     elif re.match('^[A-Z]', line) is not None:
                         m = re.match('^(\S+)\s*(.*)$', line)
                         option = m[1]
-                        value  = m[2]
+                        value = m[2]
                         self.config["Options"][option] = value
                         print(f"Found option '{value}' for '{option}'")
                     line = content.readline()
@@ -69,9 +71,8 @@ class SSHConfig:
         except OSError as e:
             print("Issue while running program" + str(e))
 
-
     def parse_match(self, line, content):
-        '''
+        """
         Parse sshd_config 'Match' block to a dict.
         Match block format : cf. `man sshd_config`, basically, the block ends when the indent returns to the beginning of the line
         The following 'Match' block in the file :
@@ -87,12 +88,41 @@ class SSHConfig:
                 "IgnoreRhosts": "yes"
             ]
         }
-        '''
+        """
         match_content = {}
-        # Retrieve initial position in file, should change on each readline
         seek = content.tell()
-        # TODO : your code here
-        return seek, match_content
+
+        # Capture the match line groups
+        m = re.match('^(?:\S+)\s*(\S+)\s*(.*)$', line)
+
+        # Build the Match dictionary
+        match_content["Type"] = m[1]
+        match_content["Targets"] = m[2]
+        match_content["Entries"] = {}
+
+        line = content.readline()
+
+        # Capture the match bloc
+        while line:
+
+            # Match blocs can't contain Subsystem keyword / arguments
+            if re.match('^Subsystem', line) is not None:
+                line = content.readline()
+                continue
+
+            # End of the current match bloc : encountered a new one
+            if re.match('^Match', line) is not None:
+                return match_content, seek
+
+            if re.match('^(?:\s+)?[A-Z]', line) is not None:
+                m = re.match('^(?:\s+)?(\S+)\s*(.*)$', line)
+                match_content["Entries"].update({m[1]: m[2]})
+
+            line = content.readline()
+
+        # end of the file
+        return match_content, seek
+
 
 sshd_config = SSHConfig()
 sshd_config.parse('./sshd_config')
